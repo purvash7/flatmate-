@@ -6,7 +6,7 @@ interface FlatMateLogoProps {
   className?: string;
 }
 
-/** Exact reusable FlatMate+ brand mark: transparent outside the warm circular badge. */
+/** Consistent FlatMate+ brand mark using the supplied circular logo asset. */
 export const FlatMateLogo: React.FC<FlatMateLogoProps> = ({
   size = 44,
   showWordmark = false,
@@ -15,15 +15,16 @@ export const FlatMateLogo: React.FC<FlatMateLogoProps> = ({
   <div className={`flex items-center gap-2.5 ${className}`}>
     <img
       src="/flatmate-logo.svg"
+      alt="FlatMate+"
       width={size}
       height={size}
-      alt="FlatMate+"
+      draggable={false}
       className="shrink-0 block"
-      style={{ width: size, height: size }}
+      style={{ width: size, height: size, objectFit: 'contain' }}
     />
     {showWordmark && (
-      <span className="font-display font-black text-xl tracking-tight text-[#242323]">
-        FlatMate<span className="text-[#242323]">+</span>
+      <span className="font-display font-black text-xl tracking-tight text-[#242323] whitespace-nowrap">
+        FlatMate+
       </span>
     )}
   </div>
