@@ -1,5 +1,5 @@
 import React from 'react';
-import { Compass, MessageCircleHeart, User, Settings } from 'lucide-react';
+import { Compass, User, Settings } from 'lucide-react';
 import { useAuth } from '../context/AuthContext.js';
 import { FlatMateLogo } from './FlatMateLogo.js';
 
@@ -20,9 +20,7 @@ export const Navbar: React.FC<NavbarProps> = ({ activeTab, setActiveTab, onOpenA
             <FlatMateLogo size={42} />
             <div>
               <div className="flex items-center gap-1.5">
-                <span className="font-display font-black text-xl tracking-tight text-[#2B2D42]">
-                  FLATMATE<span className="text-[#E07A5F]">+</span>
-                </span>
+                <span className="font-display font-black text-xl tracking-tight text-[#2B2D42]">FlatMate+</span>
                 <span className="hidden sm:inline-block px-1.5 py-0.5 text-[10px] font-bold bg-[#F2C078]/30 text-[#2B2D42] rounded-md uppercase tracking-wider">India</span>
               </div>
               <p className="text-[10px] font-bold tracking-[0.14em] text-[#7A7D87] uppercase leading-none">Find Your People</p>
@@ -35,7 +33,7 @@ export const Navbar: React.FC<NavbarProps> = ({ activeTab, setActiveTab, onOpenA
                 <Compass className="w-4 h-4" /><span>Discover</span>
               </button>
               <button id="nav-btn-matches" onClick={() => setActiveTab('matches')} className={`relative px-4 py-2 rounded-xl text-sm font-semibold flex items-center gap-2 transition-all min-h-[44px] ${activeTab === 'matches' ? 'bg-[#E07A5F] text-white shadow-sm' : 'text-[#7A7D87] hover:text-[#2B2D42] hover:bg-white/80'}`}>
-                <MessageCircleHeart className="w-4 h-4" /><span>Matches & Chat</span>
+                <FlatMateLogo size={22} /><span>Matches & Chat</span>
                 {unreadTotal > 0 && <span className="w-2.5 h-2.5 rounded-full bg-[#E07A5F] ring-2 ring-white animate-pulse" />}
               </button>
               <button id="nav-btn-profile" onClick={() => setActiveTab('profile')} className={`px-4 py-2 rounded-xl text-sm font-semibold flex items-center gap-2 transition-all min-h-[44px] ${activeTab === 'profile' ? 'bg-[#E07A5F] text-white shadow-sm' : 'text-[#7A7D87] hover:text-[#2B2D42] hover:bg-white/80'}`}>
@@ -60,7 +58,7 @@ export const Navbar: React.FC<NavbarProps> = ({ activeTab, setActiveTab, onOpenA
               <Compass className={`w-5 h-5 ${activeTab === 'discover' ? 'stroke-[2.5]' : ''}`} /><span className="text-[11px] mt-0.5">Discover</span>
             </button>
             <button id="mobile-nav-matches" onClick={() => setActiveTab('matches')} className={`relative flex flex-col items-center justify-center py-1 px-3 rounded-xl transition-all min-w-[56px] min-h-[48px] ${activeTab === 'matches' ? 'text-[#E07A5F] font-bold' : 'text-[#7A7D87]'}`}>
-              <div className="relative"><MessageCircleHeart className={`w-5 h-5 ${activeTab === 'matches' ? 'stroke-[2.5]' : ''}`} />{unreadTotal > 0 && <span className="absolute -top-0.5 -right-1 w-2.5 h-2.5 rounded-full bg-[#E07A5F] ring-2 ring-white" />}</div>
+              <div className="relative"><FlatMateLogo size={22} />{unreadTotal > 0 && <span className="absolute -top-0.5 -right-1 w-2.5 h-2.5 rounded-full bg-[#E07A5F] ring-2 ring-white" />}</div>
               <span className="text-[11px] mt-0.5">Matches</span>
             </button>
             <button id="mobile-nav-profile" onClick={() => setActiveTab('profile')} className={`flex flex-col items-center justify-center py-1 px-3 rounded-xl transition-all min-w-[56px] min-h-[48px] ${activeTab === 'profile' ? 'text-[#E07A5F] font-bold' : 'text-[#7A7D87]'}`}>
