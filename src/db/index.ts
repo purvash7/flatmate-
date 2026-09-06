@@ -8,23 +8,26 @@ declare global {
 }
 
 export const createPool = () => {
+  if (!process.env.DATABASE_URL) {
+    throw new Error('DATABASE_URL must be set. FlatMate+ requires Render PostgreSQL.');
+  }
+
   if (!global._postgresPool) {
     global._postgresPool = new Pool({
-      host: process.env.SQL_HOST,
-      user: process.env.SQL_USER,
-      password: process.env.SQL_PASSWORD,
-      database: process.env.SQL_DB_NAME,
+      connectionString: process.env.DATABASE_URL,
+      ssl: { rejectUnauthorized: false },
       max: 10,
       connectionTimeoutMillis: 15000,
+      idleTimeoutMillis: 30000,
     });
 
     global._postgresPool.on('error', (err) => {
-      console.error('Unexpected error on idle SQL pool client:', err);
+      console.error('Unexpected error on PostgreSQL pool client:', err);
     });
   }
+
   return global._postgresPool;
 };
 
-const pool = createPool();
-
+export const pool = createPool();
 export const db = drizzle(pool, { schema });
