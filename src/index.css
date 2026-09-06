@@ -43,45 +43,23 @@
   }
 }
 
-/* Custom scrollbar for clean app feel */
-::-webkit-scrollbar {
-  width: 6px;
-  height: 6px;
-}
-::-webkit-scrollbar-track {
-  background: transparent;
-}
-::-webkit-scrollbar-thumb {
-  background: #E6E3DE;
-  border-radius: 9999px;
-}
-::-webkit-scrollbar-thumb:hover {
-  background: #7A7D87;
-}
+::-webkit-scrollbar { width: 6px; height: 6px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: #E6E3DE; border-radius: 9999px; }
+::-webkit-scrollbar-thumb:hover { background: #7A7D87; }
 
-/* Global Selected Button / Chip / Pill guarantee */
-.chip-selectable {
-  transition: all 0.15s ease-in-out;
-  cursor: pointer;
-  user-select: none;
-}
-.chip-selectable[data-selected="true"],
-.chip-selectable.selected {
-  background-color: #E07A5F !important;
-  color: #FFFFFF !important;
-  border-color: #E07A5F !important;
-}
-.chip-selectable[data-selected="false"],
-.chip-selectable:not(.selected) {
-  background-color: #FFFFFF;
-  color: #2B2D42;
-  border-color: #E6E3DE;
-}
+.chip-selectable { transition: all 0.15s ease-in-out; cursor: pointer; user-select: none; }
+.chip-selectable[data-selected="true"], .chip-selectable.selected { background-color: #E07A5F !important; color: #FFFFFF !important; border-color: #E07A5F !important; }
+.chip-selectable[data-selected="false"], .chip-selectable:not(.selected) { background-color: #FFFFFF; color: #2B2D42; border-color: #E6E3DE; }
 
-.label-caps {
-  font-family: 'Manrope', sans-serif;
-  font-weight: 700;
-  letter-spacing: 0.14em;
-  text-transform: uppercase;
-  font-size: 0.75rem;
+.label-caps { font-family: 'Manrope', sans-serif; font-weight: 700; letter-spacing: 0.14em; text-transform: uppercase; font-size: 0.75rem; }
+
+/* FlatMate+ branding: replace the old heart match glyph with the real brand mark. */
+svg.lucide-message-circle-heart { display: none !important; }
+div:has(> svg.lucide-message-circle-heart) {
+  background-image: url('/flatmate-logo.svg');
+  background-repeat: no-repeat;
+  background-position: center;
+  background-size: 72% 72%;
+  color: transparent !important;
 }
