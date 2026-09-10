@@ -25,8 +25,8 @@ export const SelectableChip: React.FC<SelectableChipProps> = ({
 }) => {
   const sizeClasses = {
     sm: 'px-3 py-1.5 text-xs font-medium min-h-[36px]',
-    md: 'px-4 py-2 text-sm font-medium min-h-[44px]',
-    lg: 'px-5 py-3 text-base font-semibold min-h-[50px]'
+    md: 'px-3.5 py-2 text-sm font-medium min-h-[44px]',
+    lg: 'px-4 py-3 text-base font-semibold min-h-[50px]'
   }[size];
 
   return (
@@ -36,14 +36,14 @@ export const SelectableChip: React.FC<SelectableChipProps> = ({
       disabled={disabled}
       onClick={onClick}
       data-selected={selected}
-      className={`chip-selectable relative inline-flex items-center justify-center gap-2 rounded-xl transition-all duration-150 border focus:outline-none focus:ring-2 focus:ring-[#E07A5F]/40 max-w-full min-w-0 ${sizeClasses} ${
+      className={`chip-selectable relative flex w-full min-w-0 items-center justify-center gap-2 rounded-xl transition-all duration-150 border focus:outline-none focus:ring-2 focus:ring-[#E07A5F]/40 ${sizeClasses} ${
         selected
           ? '!bg-[#E07A5F] !text-white !border-[#E07A5F] shadow-sm font-semibold'
           : 'bg-white text-[#2B2D42] border-[#E6E3DE] hover:border-[#E07A5F]/60 hover:bg-[#FAF8F4]'
       } ${disabled ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'} ${className}`}
     >
       {icon && <span className={`flex-shrink-0 ${selected ? 'text-white' : 'text-[#7A7D87]'}`}>{icon}</span>}
-      <span className="whitespace-normal break-words text-center leading-tight select-none min-w-0">{label}</span>
+      <span className="whitespace-normal break-words text-center leading-snug select-none min-w-0 max-w-full">{label}</span>
       {subLabel && (
         <span className={`text-xs ml-1 whitespace-normal break-words ${selected ? 'text-white/90' : 'text-[#7A7D87]'}`}>
           ({subLabel})
