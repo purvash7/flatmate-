@@ -6,7 +6,7 @@ interface FlatMateLogoProps {
   className?: string;
 }
 
-/** Consistent FlatMate+ brand mark using the supplied circular logo asset. */
+/** FlatMate+ brand mark matching the supplied circular two-person-plus logo. */
 export const FlatMateLogo: React.FC<FlatMateLogoProps> = ({
   size = 44,
   showWordmark = false,
@@ -19,7 +19,7 @@ export const FlatMateLogo: React.FC<FlatMateLogoProps> = ({
       width={size}
       height={size}
       draggable={false}
-      className="shrink-0 block"
+      className="shrink-0 block rounded-full"
       style={{ width: size, height: size, objectFit: 'contain' }}
     />
     {showWordmark && (
