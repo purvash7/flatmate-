@@ -6,12 +6,42 @@ import { SelectableChip } from '../components/SelectableChip.js';
 
 const MIN_RENT=3000;
 const MAX_RENT=80000;
+const RENT_STEP=1000;
+
+const clampRent=(value:number)=>Math.min(MAX_RENT,Math.max(MIN_RENT,Math.round(value/RENT_STEP)*RENT_STEP));
+
+const RentRangeEditor:React.FC<{min:number;max:number;onChange:(min:number,max:number)=>void}>=({min,max,onChange})=>{
+  const safeMin=Math.min(clampRent(min),clampRent(max)-RENT_STEP);
+  const safeMax=Math.max(clampRent(max),safeMin+RENT_STEP);
+  const minPct=((safeMin-MIN_RENT)/(MAX_RENT-MIN_RENT))*100;
+  const maxPct=((safeMax-MIN_RENT)/(MAX_RENT-MIN_RENT))*100;
+  return <div className="space-y-3 rounded-2xl bg-[#FAF8F4] border border-[#E6E3DE] p-4">
+    <div className="flex items-end justify-between gap-4">
+      <div><span className="label-caps text-[#7A7D87] block mb-1">Minimum</span><strong className="text-lg font-display text-[#2B2D42]">₹{safeMin.toLocaleString()}</strong></div>
+      <div className="text-right"><span className="label-caps text-[#7A7D87] block mb-1">Maximum</span><strong className="text-lg font-display text-[#2B2D42]">₹{safeMax.toLocaleString()}</strong></div>
+    </div>
+    <div className="relative h-10 pt-3">
+      <div className="absolute left-0 right-0 top-4 h-2 rounded-full bg-[#E6E3DE]"/>
+      <div className="absolute top-4 h-2 rounded-full bg-[#E07A5F]" style={{left:`${minPct}%`,right:`${100-maxPct}%`}}/>
+      <input aria-label="Minimum rent" type="range" min={MIN_RENT} max={MAX_RENT-RENT_STEP} step={RENT_STEP} value={safeMin}
+        onChange={e=>onChange(Math.min(Number(e.target.value),safeMax-RENT_STEP),safeMax)}
+        className="rent-range absolute inset-x-0 top-0 w-full"/>
+      <input aria-label="Maximum rent" type="range" min={MIN_RENT+RENT_STEP} max={MAX_RENT} step={RENT_STEP} value={safeMax}
+        onChange={e=>onChange(safeMin,Math.max(Number(e.target.value),safeMin+RENT_STEP))}
+        className="rent-range absolute inset-x-0 top-0 w-full"/>
+    </div>
+    <div className="flex justify-between text-[10px] font-bold text-[#7A7D87]"><span>₹3k</span><span>₹80k</span></div>
+    <p className="text-[11px] text-[#7A7D87]">Drag either handle to set the exact range you want.</p>
+  </div>;
+};
 
 export const ProfilePage: React.FC = () => {
   const { user, profile, updateProfileState } = useAuth();
   const [isEditing,setIsEditing]=useState(false);
   const [loading,setLoading]=useState(false);
   const [error,setError]=useState<string|null>(null);
+  const [accountEmail,setAccountEmail]=useState(user?.email||'');
+  const [emailVerified,setEmailVerified]=useState(!!user?.email_verified);
   const [name,setName]=useState(profile?.name||'');
   const [locality,setLocality]=useState(profile?.locality||'Indiranagar');
   const [rentMin,setRentMin]=useState(profile?.rent_min||10000);
@@ -22,6 +52,14 @@ export const ProfilePage: React.FC = () => {
   const [sleepSchedule,setSleepSchedule]=useState(profile?.sleep_schedule||'Flexible');
   const [smoking,setSmoking]=useState(profile?.smoking||'No');
   const [drinking,setDrinking]=useState(profile?.drinking||'Occasionally');
+
+  useEffect(()=>{
+    if(user?.email){setAccountEmail(user.email);setEmailVerified(!!user.email_verified);}
+    api.getMe().then(res=>{
+      setAccountEmail(res.user.email||'');
+      setEmailVerified(!!res.user.email_verified);
+    }).catch(()=>{});
+  },[user?.email,user?.email_verified]);
 
   useEffect(()=>{
     if(profile){
@@ -63,7 +101,7 @@ export const ProfilePage: React.FC = () => {
           <div className="flex-1 sm:pl-4 min-w-0"><h2 className="font-display font-black text-2xl sm:text-3xl text-[#2B2D42] flex items-center justify-center sm:justify-start gap-2"><span>{profile.name}</span><span className="text-xl font-bold text-[#7A7D87]">, {profile.age}</span></h2><div className="flex flex-wrap items-center justify-center sm:justify-start gap-3 text-xs text-[#7A7D87] mt-1.5 font-medium"><span className="flex items-center gap-1"><MapPin className="w-3.5 h-3.5 text-[#E07A5F]"/><span>{profile.locality}, Bangalore</span></span><span>•</span><span className="flex items-center gap-1"><IndianRupee className="w-3.5 h-3.5 text-[#E07A5F]"/><span>₹{profile.rent_min?.toLocaleString()} - ₹{profile.rent_max?.toLocaleString()} / mo</span></span></div></div>
         </div>
 
-        <div className="mb-6 p-4 rounded-2xl bg-[#FAF8F4] border border-[#E6E3DE]"><div className="flex items-center justify-between mb-1"><h4 className="label-caps text-[#7A7D87]">Account Email</h4>{user?.email_verified&&<span className="text-[11px] font-bold text-[#4F8A6D] flex items-center gap-1"><CheckCircle2 className="w-3.5 h-3.5"/>Verified</span>}</div><p className="text-sm font-semibold text-[#2B2D42] break-all flex items-center gap-2"><Mail className="w-4 h-4 text-[#E07A5F] shrink-0"/>{user?.email||'Email unavailable'}</p></div>
+        <div className="mb-6 p-4 rounded-2xl bg-[#FAF8F4] border border-[#E6E3DE]"><div className="flex items-center justify-between mb-1"><h4 className="label-caps text-[#7A7D87]">Account Email</h4>{emailVerified&&<span className="text-[11px] font-bold text-[#4F8A6D] flex items-center gap-1"><CheckCircle2 className="w-3.5 h-3.5"/>Verified</span>}</div><p className="text-sm font-semibold text-[#2B2D42] break-all flex items-center gap-2"><Mail className="w-4 h-4 text-[#E07A5F] shrink-0"/>{accountEmail||'Email unavailable'}</p></div>
 
         <div className="mb-6 p-4 rounded-2xl bg-[#FAF8F4] border border-[#E6E3DE]"><div className="flex items-center justify-between mb-1"><h4 className="label-caps text-[#7A7D87]">About Me</h4>{!profile.bio&&<button type="button" onClick={()=>setIsEditing(true)} className="text-xs font-bold text-[#E07A5F] hover:underline">+ Write Bio</button>}</div>{profile.bio?<p className="text-sm text-[#2B2D42] leading-relaxed">"{profile.bio}"</p>:<p className="text-xs text-[#7A7D87] italic">No bio added yet. Tell potential flatmates a bit about yourself!</p>}</div>
 
@@ -79,7 +117,7 @@ export const ProfilePage: React.FC = () => {
     {isEditing&&<div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-in fade-in"><div className="bg-white rounded-3xl w-full max-w-xl max-h-[90vh] overflow-y-auto shadow-2xl border border-[#E6E3DE] p-6 sm:p-8"><div className="flex items-center justify-between pb-4 border-b border-[#E6E3DE] mb-6"><h3 className="font-display font-bold text-xl text-[#2B2D42]">Edit Your Profile</h3><button onClick={()=>setIsEditing(false)} className="w-8 h-8 rounded-full bg-[#FAF8F4] flex items-center justify-center text-[#7A7D87]">✕</button></div><form onSubmit={handleSaveProfile} className="space-y-4">
       <div><label className="label-caps text-[#7A7D87] block mb-1">Full Name</label><input type="text" value={name} onChange={e=>setName(e.target.value)} className="w-full px-3.5 py-2.5 rounded-xl border border-[#E6E3DE] text-sm focus:ring-2 focus:ring-[#E07A5F]/40"/></div>
       <div><label className="label-caps text-[#7A7D87] block mb-1">Locality in Bangalore</label><input type="text" value={locality} onChange={e=>setLocality(e.target.value)} className="w-full px-3.5 py-2.5 rounded-xl border border-[#E6E3DE] text-sm focus:ring-2 focus:ring-[#E07A5F]/40"/></div>
-      <div className="grid grid-cols-2 gap-3"><div><label className="label-caps text-[#7A7D87] block mb-1">Min Rent (₹)</label><input type="number" min={MIN_RENT} max={MAX_RENT} step={1000} value={rentMin} onChange={e=>setRentMin(Number(e.target.value))} className="w-full px-3.5 py-2.5 rounded-xl border border-[#E6E3DE] text-sm focus:ring-2 focus:ring-[#E07A5F]/40"/></div><div><label className="label-caps text-[#7A7D87] block mb-1">Max Rent (₹)</label><input type="number" min={MIN_RENT} max={MAX_RENT} step={1000} value={rentMax} onChange={e=>setRentMax(Number(e.target.value))} className="w-full px-3.5 py-2.5 rounded-xl border border-[#E6E3DE] text-sm focus:ring-2 focus:ring-[#E07A5F]/40"/></div></div>
+      <RentRangeEditor min={rentMin} max={rentMax} onChange={(a,b)=>{setRentMin(a);setRentMax(b);}}/>
       <div><label className="label-caps text-[#7A7D87] block mb-1">Bio</label><textarea rows={3} value={bio} placeholder="Tell potential flatmates what you do, your daily habits, and what you're looking for..." onChange={e=>setBio(e.target.value)} className="w-full px-3.5 py-2.5 rounded-xl border border-[#E6E3DE] text-sm focus:ring-2 focus:ring-[#E07A5F]/40"/></div>
       <div><label className="label-caps text-[#7A7D87] block mb-1.5">Dietary Preference</label><div className="grid grid-cols-2 gap-2">{['Vegetarian','Non-vegetarian','Eggetarian','Vegan'].map(f=><SelectableChip key={f} label={f} selected={foodPref===f} onClick={()=>setFoodPref(f)} size="sm"/>)}</div></div>
       {error&&<p className="text-xs text-[#D64545] font-semibold">{error}</p>}
