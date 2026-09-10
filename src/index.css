@@ -31,7 +31,11 @@
 svg.lucide-message-circle-heart{display:none!important;}
 div:has(> svg.lucide-message-circle-heart){background-image:url('/flatmate-logo.svg');background-repeat:no-repeat;background-position:center;background-size:72% 72%;color:transparent!important;}
 
-/* The onboarding rent selector uses two independent handles so both bounds are always reachable on touch devices. */
-div:has(> input[aria-label="Minimum rent"]){min-height:56px;}
-input[aria-label="Minimum rent"],input[aria-label="Maximum rent"]{height:24px!important;top:0!important;}
-input[aria-label="Maximum rent"]{top:30px!important;}
+/* Accessible dual-handle rent slider. */
+.rent-range{appearance:none;-webkit-appearance:none;height:24px!important;background:transparent!important;pointer-events:none;outline:none;z-index:2;}
+.rent-range::-webkit-slider-runnable-track{height:8px;background:transparent;}
+.rent-range::-moz-range-track{height:8px;background:transparent;}
+.rent-range::-webkit-slider-thumb{appearance:none;-webkit-appearance:none;width:22px;height:22px;margin-top:-7px;border-radius:9999px;background:#fff;border:3px solid #E07A5F;box-shadow:0 2px 8px rgba(43,45,66,.18);pointer-events:auto;cursor:grab;}
+.rent-range::-moz-range-thumb{width:22px;height:22px;border-radius:9999px;background:#fff;border:3px solid #E07A5F;box-shadow:0 2px 8px rgba(43,45,66,.18);pointer-events:auto;cursor:grab;}
+.rent-range:focus-visible::-webkit-slider-thumb{box-shadow:0 0 0 4px rgba(224,122,95,.2);}
+.rent-range:focus-visible::-moz-range-thumb{box-shadow:0 0 0 4px rgba(224,122,95,.2);}
