@@ -1,13 +1,19 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" role="img" aria-labelledby="title desc">
   <title id="title">FlatMate+</title>
-  <desc id="desc">FlatMate+ two-person logo with a plus sign</desc>
-  <circle cx="256" cy="256" r="232" fill="#EFE6D9"/>
+  <desc id="desc">FlatMate+ circular two-person-plus logo</desc>
+  <defs>
+    <radialGradient id="bg" cx="50%" cy="42%" r="68%">
+      <stop offset="0" stop-color="#F4ECDF"/>
+      <stop offset="1" stop-color="#EDE3D4"/>
+    </radialGradient>
+  </defs>
+  <circle cx="256" cy="256" r="250" fill="url(#bg)"/>
   <g fill="none" stroke="#242323" stroke-width="17" stroke-linecap="round" stroke-linejoin="round">
-    <circle cx="204" cy="169" r="39"/>
-    <circle cx="309" cy="169" r="39"/>
-    <path d="M120 392V292c0-49 31-82 76-82 33 0 57 15 73 40"/>
-    <path d="M393 392V292c0-49-31-82-76-82-33 0-57 15-73 40"/>
-    <path d="M256 250c-27 31-58 53-58 91 0 31 26 55 58 55s58-24 58-55c0-38-31-60-58-91Z"/>
-    <path d="M392 116v91M346.5 161.5h91"/>
+    <circle cx="165" cy="190" r="39"/>
+    <circle cx="289" cy="190" r="39"/>
+    <path d="M82 392V307c0-55 35-91 84-91 35 0 61 15 82 48"/>
+    <path d="M372 392V307c0-55-35-91-84-91-35 0-61 15-82 48"/>
+    <path d="M227 250c-24 28-49 51-49 87 0 31 26 55 58 55s58-24 58-55c0-36-25-59-49-87Z"/>
+    <path d="M403 128v92M357 174h92"/>
   </g>
 </svg>
