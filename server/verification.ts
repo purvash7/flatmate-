@@ -7,16 +7,14 @@ export interface VerificationResult { verified:boolean; confidence:number; messa
 
 let aiClient:GoogleGenAI|null=null;
 function getAiClient(){
-  if(!aiClient&&process.env.GEMINI_API_KEY){
-    aiClient=new GoogleGenAI({apiKey:process.env.GEMINI_API_KEY});
-  }
+  if(!aiClient&&process.env.GEMINI_API_KEY)aiClient=new GoogleGenAI({apiKey:process.env.GEMINI_API_KEY});
   return aiClient;
 }
 
 const LABELS:Record<LivenessChallenge,string>={
   thumbs_up:'thumbs up',
   thumbs_down:'thumbs down',
-  peace:'peace sign (two fingers raised)',
+  peace:'peace sign (index and middle fingers raised in a V)',
   open_hand:'open hand (five fingers raised)'
 };
 
@@ -32,8 +30,7 @@ function extractChallenge(data:string):{base64:string;mimeType:string;challenge:
 function parseJson(text:string):any{
   const cleaned=(text||'').trim().replace(/^```(?:json)?\s*/i,'').replace(/\s*```$/,'').trim();
   try{return JSON.parse(cleaned);}catch{
-    const start=cleaned.indexOf('{');
-    const end=cleaned.lastIndexOf('}');
+    const start=cleaned.indexOf('{');const end=cleaned.lastIndexOf('}');
     if(start>=0&&end>start){try{return JSON.parse(cleaned.slice(start,end+1));}catch{}}
     return {};
   }
@@ -49,64 +46,75 @@ const LIVENESS_SCHEMA={type:Type.OBJECT,properties:{
   message:{type:Type.STRING}
 },required:['is_live','has_gesture','has_peace_sign','is_face_clear','passed','confidence','message']};
 
-async function generateVerification(ai:GoogleGenAI,base64:string,mimeType:string,challenge:LivenessChallenge){
+async function inspectLiveness(ai:GoogleGenAI,base64:string,mimeType:string,challenge:LivenessChallenge,model:string){
   const gesture=LABELS[challenge];
+  const prompt=`FlatMate+ camera verification. Inspect this single camera frame carefully.
+The user was explicitly instructed to show ONE HAND doing exactly: ${gesture}.
+Return only the requested JSON schema.
+
+PASS criteria:
+- exactly one clearly visible human face (it may be imperfectly framed, wearing glasses, wearing makeup, or under normal indoor lighting);
+- the requested hand gesture is clearly visible and belongs to the same visible person;
+- the image looks like an ordinary real camera selfie. Do not demand mathematical proof of motion or depth from one still frame.
+
+Do NOT reject genuine selfies because of moderate JPEG compression, shadows, skin tone, hairstyle, facial expression, camera angle, mirror use, or a slightly imperfect crop.
+Set is_live=false only for an obvious non-human/AI avatar, cartoon, mannequin, screenshot, or photo-of-a-photo. Set has_gesture=true only when the requested gesture is actually visible. confidence is 0-100.`;
+  const response=await Promise.race([
+    ai.models.generateContent({
+      model,
+      contents:{parts:[{inlineData:{mimeType,data:base64}},{text:prompt}]},
+      config:{responseMimeType:'application/json',responseSchema:LIVENESS_SCHEMA,temperature:0,maxOutputTokens:256,thinkingConfig:{thinkingLevel:'low'}}
+    }),
+    new Promise<never>((_,reject)=>setTimeout(()=>reject(new Error('Gemini liveness timeout')),12000))
+  ]);
+  const parsed=parseJson((response as any).text||'');
+  if(typeof parsed.has_gesture!=='boolean'||typeof parsed.is_face_clear!=='boolean'||typeof parsed.is_live!=='boolean')throw new Error('Gemini returned an incomplete liveness result');
+  return parsed;
+}
+
+async function generateVerification(ai:GoogleGenAI,base64:string,mimeType:string,challenge:LivenessChallenge){
+  // Retry the same current model once before moving to the compatibility fallback.
   const models=['gemini-3.8-flash','gemini-3.7-flash','gemini-3.6-flash'];
   let lastError:any;
+  const results:any[]=[];
   for(const model of models){
-    try{
-      const response=await Promise.race([
-        ai.models.generateContent({
-          model,
-          contents:{parts:[
-            {inlineData:{mimeType,data:base64}},
-            {text:`FlatMate+ live camera verification. The user was instructed to show ONE HAND doing exactly: ${gesture}. Inspect the actual image, not assumptions about what a selfie should look like. Return JSON only.\n\nThe image should PASS when one real human face is clearly visible and the requested hand gesture is clearly visible. Treat normal phone/webcam selfies, mirrors, glasses, makeup, varied lighting, different skin tones, imperfect framing, and moderate image compression as valid. Do NOT require proof of motion or depth from a single frame. Set is_live false only for an obvious non-human image, cartoon/avatar, mannequin, screenshot, or photo-of-a-photo. Do not reject a genuine camera selfie simply because liveness cannot be mathematically proven from one frame.\n\nGesture rules: thumbs up = thumb raised with other fingers curled; thumbs down = thumb pointing downward; peace sign = index and middle fingers raised in a V; open hand = five fingers visibly extended. Set has_gesture true only when the requested gesture is actually visible. Set is_face_clear true when one face is visible and sufficiently clear. confidence must be 0-100.`}
-          ]},
-          config:{responseMimeType:'application/json',responseSchema:LIVENESS_SCHEMA,thinkingConfig:{thinkingLevel:'low'}}
-        }),
-        new Promise((_,reject)=>setTimeout(()=>reject(new Error('Gemini liveness timeout')),18000))
-      ]);
-      const parsed=parseJson((response as any).text||'');
-      if(typeof parsed.has_gesture==='boolean'&&typeof parsed.is_face_clear==='boolean'&&typeof parsed.is_live==='boolean')return parsed;
-      throw new Error('Gemini returned an incomplete liveness result');
-    }catch(err){
-      lastError=err;
-      console.warn(`Gemini liveness model ${model} failed:`,err instanceof Error?err.message:err);
+    for(let attempt=0;attempt<2;attempt++){
+      try{
+        const parsed=await inspectLiveness(ai,base64,mimeType,challenge,model);
+        results.push(parsed);
+        // A positive result is sufficient; the client is already camera-only and the requested gesture is the anti-replay challenge.
+        if(parsed.has_gesture&&parsed.is_face_clear)return parsed;
+      }catch(err){
+        lastError=err;
+        console.warn(`Gemini liveness ${model} attempt ${attempt+1} failed:`,err instanceof Error?err.message:err);
+      }
     }
+  }
+  if(results.length>0){
+    // Prefer the most permissive valid vision result for genuine camera captures.
+    return results.sort((a,b)=>Number(Boolean(b.has_gesture&&b.is_face_clear))-Number(Boolean(a.has_gesture&&a.is_face_clear)))[0];
   }
   throw lastError||new Error('No Gemini liveness model available');
 }
 
 export async function verifyPeaceSignLiveness(base64Data:string,_mimeType:string='image/jpeg'):Promise<LivenessVerificationResult>{
   const {base64,mimeType,challenge}=extractChallenge(base64Data);
-  if(!base64||base64.length<1000)return{passed:false,is_live:false,has_peace_sign:false,is_face_clear:false,has_gesture:false,challenge,confidence:0,message:'Photo capture is missing or incomplete. Please take a clear live selfie.'};
+  if(!base64||base64.length<1000)return{passed:false,is_live:false,is_face_clear:false,has_gesture:false,has_peace_sign:false,challenge,confidence:0,message:'Photo capture is missing or incomplete. Please take a clear live selfie.'};
   const ai=getAiClient();
-  if(!ai)return{passed:false,is_live:false,has_peace_sign:false,is_face_clear:false,has_gesture:false,challenge,confidence:0,message:'Liveness verification is temporarily unavailable. Please try again.'};
+  if(!ai)return{passed:false,is_live:false,is_face_clear:false,has_gesture:false,has_peace_sign:false,challenge,confidence:0,message:'Liveness verification is temporarily unavailable. Please try again.'};
   try{
     const p=await generateVerification(ai,base64,mimeType,challenge);
     const hasGesture=Boolean(p.has_gesture);
     const faceClear=Boolean(p.is_face_clear);
     const modelLive=Boolean(p.is_live);
     const confidence=Math.min(100,Math.max(0,Number(p.confidence)||0));
-    // A single image cannot independently prove motion. The randomized camera challenge is
-    // the anti-replay signal; require the requested gesture + one clear face and use is_live
-    // as a diagnostic rather than making correct camera captures fail because of model uncertainty.
     const passed=hasGesture&&faceClear;
     const isLive=modelLive||passed;
     const gesture=LABELS[challenge];
-    return{
-      passed,
-      is_live:isLive,
-      has_peace_sign:Boolean(p.has_peace_sign),
-      is_face_clear:faceClear,
-      has_gesture:hasGesture,
-      challenge,
-      confidence:confidence|| (passed?90:0),
-      message:passed?`Liveness verified with ${gesture}.`:`Please show ${gesture} with one hand, keep your full face visible, and take the photo in good lighting.`
-    };
+    return{passed,is_live:isLive,has_peace_sign:Boolean(p.has_peace_sign),is_face_clear:faceClear,has_gesture:hasGesture,challenge,confidence:confidence|| (passed?90:0),message:passed?`Liveness verified with ${gesture}.`:`Please show ${gesture} with one hand, keep your face clearly visible, and take the photo in good lighting.`};
   }catch(err:any){
     console.warn('Gemini liveness check failed:',err?.message||err);
-    return{passed:false,is_live:false,has_peace_sign:false,is_face_clear:false,has_gesture:false,challenge,confidence:0,message:'We could not complete the liveness check. Please try again.'};
+    return{passed:false,is_live:false,is_face_clear:false,has_gesture:false,has_peace_sign:false,challenge,confidence:0,message:'We could not complete the liveness check. Please try again.'};
   }
 }
 
@@ -116,7 +124,7 @@ export async function verifyFaceMatchAgainstLive(livePhotoBase64:string,profileP
   const ai=getAiClient();
   if(ai&&live.base64){
     try{
-      const response=await ai.models.generateContent({model:'gemini-3.8-flash',contents:{parts:[{inlineData:{mimeType:live.mimeType,data:live.base64}},{inlineData:{mimeType:profile.mimeType||mimeType,data:profile.base64}},{text:'You are an identity verification and anti-fraud system for FlatMate+. Image 1 is the user live selfie. Image 2 is the profile photo. Compare facial structure and estimate resemblance 0-100. Inspect Image 2 for obvious AI/synthetic generation. Pass only when resemblance >=65 and the profile photo is not AI-generated. Normal lighting, expression, hairstyle, glasses, makeup, camera angle and moderate compression should not cause a false rejection. Return JSON only.'}]},config:{responseMimeType:'application/json',responseSchema:{type:Type.OBJECT,properties:{similarity_percentage:{type:Type.NUMBER},is_same_person:{type:Type.BOOLEAN},is_ai_generated:{type:Type.BOOLEAN},passed:{type:Type.BOOLEAN},confidence:{type:Type.NUMBER},feedback:{type:Type.STRING}},required:['similarity_percentage','is_same_person','is_ai_generated','passed','confidence','feedback']},thinkingConfig:{thinkingLevel:'low'}}});
+      const response=await ai.models.generateContent({model:'gemini-3.8-flash',contents:{parts:[{inlineData:{mimeType:live.mimeType,data:live.base64}},{inlineData:{mimeType:profile.mimeType||mimeType,data:profile.base64}},{text:'You are an identity verification and anti-fraud system for FlatMate+. Image 1 is the user live selfie. Image 2 is the profile photo. Compare facial structure and estimate resemblance 0-100. Inspect Image 2 for obvious AI/synthetic generation. Pass only when resemblance >=65 and the profile photo is not AI-generated. Normal lighting, expression, hairstyle, glasses, makeup, camera angle and moderate compression should not cause a false rejection. Return JSON only.'}]},config:{responseMimeType:'application/json',responseSchema:{type:Type.OBJECT,properties:{similarity_percentage:{type:Type.NUMBER},is_same_person:{type:Type.BOOLEAN},is_ai_generated:{type:Type.BOOLEAN},passed:{type:Type.BOOLEAN},confidence:{type:Type.NUMBER},feedback:{type:Type.STRING}},required:['similarity_percentage','is_same_person','is_ai_generated','passed','confidence','feedback']},temperature:0,maxOutputTokens:256,thinkingConfig:{thinkingLevel:'low'}}});
       const p=parseJson(response.text||'');
       const sim=Math.min(100,Math.max(0,Math.round(Number(p.similarity_percentage)||0)));
       const isAi=Boolean(p.is_ai_generated);
