@@ -33,6 +33,9 @@ import {
   verifyFaceMatchAgainstLive
 } from './server/verification.js';
 import { UserProfile, MatchItem, MessageItem, DiscoverFilters } from './src/types.js';
+import { db } from './src/db/index.ts';
+import { users as pgUsers } from './src/db/schema.ts';
+import { eq } from 'drizzle-orm';
 import {
   syncUserToPostgres,
   syncProfileToPostgres,
@@ -257,7 +260,7 @@ async function startServer() {
   app.use(express.urlencoded({ extended: true, limit: '15mb' }));
 
   // Auth Middleware
-  const requireAuth = (req: express.Request, res: express.Response, next: express.NextFunction) => {
+  const requireAuth = async (req: express.Request, res: express.Response, next: express.NextFunction) => {
     const authHeader = req.headers.authorization;
     const token = authHeader && authHeader.startsWith('Bearer ') ? authHeader.substring(7) : null;
     
@@ -270,7 +273,34 @@ async function startServer() {
       return res.status(401).json({ error: 'Session expired. Please log in again.' });
     }
 
-    const user = users.get(payload.userId);
+    // The app uses PostgreSQL as durable storage, while the in-memory map is a
+    // request cache. On Render, a request can land on a different instance
+    // (or immediately after a restart), so never treat a cache miss as a
+    // deleted account. Recover the user from PostgreSQL and warm the cache.
+    let user: any = users.get(payload.userId);
+    if (!user) {
+      try {
+        const rows = await db.select().from(pgUsers).where(eq(pgUsers.id, payload.userId)).limit(1);
+        const row = rows[0];
+        if (row) {
+          user = {
+            id: row.id,
+            email: row.email,
+            phone: row.phone || '',
+            password_hash: row.passwordHash || '',
+            phone_verified: !!row.phoneVerified,
+            email_verified: !!row.emailVerified,
+            google_id: row.googleId || undefined,
+            created_at: row.createdAt?.toISOString?.() || new Date().toISOString()
+          };
+          users.set(row.id, user);
+        }
+      } catch (error) {
+        console.error('PostgreSQL auth lookup failed:', error);
+        return res.status(503).json({ error: 'Account verification is temporarily unavailable. Please try again.' });
+      }
+    }
+
     if (!user) {
       return res.status(401).json({ error: 'Account not found or deleted.' });
     }
